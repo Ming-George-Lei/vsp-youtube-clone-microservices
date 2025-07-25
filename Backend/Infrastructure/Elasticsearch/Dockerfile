@@ -5,7 +5,7 @@ ENV VERSION 7.17.7
 
 # Install IK analyzer
 # https://github.com/medcl/elasticsearch-analysis-ik
-RUN ./bin/elasticsearch-plugin install --batch https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v${VERSION}/elasticsearch-analysis-ik-${VERSION}.zip
+RUN ./bin/elasticsearch-plugin install --batch https://get.infini.cloud/elasticsearch/analysis-ik/${VERSION}
 
 # Use opencc to patch the main.dic for zh-tw support
 #https://xenby.com/b/325-%E6%95%99%E5%AD%B8-elasticsearch-%E5%AE%89%E8%A3%9D%E8%88%87%E6%94%AF%E6%8F%B4%E7%B9%81%E9%AB%94%E4%B8%AD%E6%96%87%E5%88%86%E8%A9%9E
