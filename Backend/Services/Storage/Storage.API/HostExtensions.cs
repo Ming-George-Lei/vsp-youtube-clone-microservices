@@ -35,6 +35,7 @@ using Storage.API.Application.Configurations;
 using Storage.API.Application.Services;
 using Storage.Domain.Contracts;
 using Storage.Infrastructure;
+using Storage.Infrastructure.AzureStorage;
 using Storage.Infrastructure.LocalStorage;
 using Storage.Infrastructure.Repositories;
 using Storage.Shared.IntegrationEvents;
@@ -63,7 +64,7 @@ namespace Storage {
                    .AddSerilog()
                    .AddHealthChecks();
 
-            builder.AddLocalStorageRepository();
+            builder.AddStorageRepository();
 
             builder.AddAuthentication()
                    .AddAuthorization()
@@ -248,7 +249,8 @@ namespace Storage {
                 .Configure<VideoStorageConfiguration>(configuration.GetSection("VideoStorageConfiguration"))
                 .Configure<ImageUploadTokenValidationConfiguration>(configuration.GetSection("ImageUploadTokenValidationConfiguration"))
                 .Configure<ImageStorageConfiguration>(configuration.GetSection("ImageStorageConfiguration"))
-                .Configure<CleanupConfiguration>(configuration.GetSection("CleanupConfiguration"));
+                .Configure<CleanupConfiguration>(configuration.GetSection("CleanupConfiguration"))
+                .Configure<StorageConfiguration>(configuration.GetSection("StorageConfiguration"));
 
             return builder;
         }
@@ -264,6 +266,11 @@ namespace Storage {
         }
 
         private static void UseLocalStorageStaticFiles (this WebApplication app) {
+            var storageConfig = app.Configuration.GetSection("StorageConfiguration").Get<StorageConfiguration>();
+            if (storageConfig?.Type == StorageType.AzureBlobStorage) {
+                return;
+            }
+
             var localStorageConfig = app.Services.GetRequiredService<IOptions<LocalStorageConfiguration>>().Value;
 
             if (localStorageConfig.ServeStaticFiles) {
@@ -374,12 +381,20 @@ namespace Storage {
             return builder;
         }
 
-        private static WebApplicationBuilder AddLocalStorageRepository (this WebApplicationBuilder builder) {
+        private static WebApplicationBuilder AddStorageRepository (this WebApplicationBuilder builder) {
             var configuration = builder.Configuration;
+            var storageConfig = configuration.GetSection("StorageConfiguration").Get<StorageConfiguration>();
 
-            builder.Services
-                .AddScoped<IStorageRepository, LocalStorageRepository>()
-                .Configure<LocalStorageConfiguration>(configuration.GetSection("LocalStorageConfiguration"));
+            if (storageConfig?.Type == StorageType.AzureBlobStorage) {
+                builder.Services
+                    .AddScoped<IStorageRepository, AzureBlobStorageRepository>()
+                    .Configure<AzureBlobStorageConfiguration>(configuration.GetSection("AzureBlobStorageConfiguration"));
+            }
+            else {
+                builder.Services
+                    .AddScoped<IStorageRepository, LocalStorageRepository>()
+                    .Configure<LocalStorageConfiguration>(configuration.GetSection("LocalStorageConfiguration"));
+            }
 
             return builder;
         }

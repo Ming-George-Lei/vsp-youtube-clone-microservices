@@ -132,6 +132,10 @@ namespace VideoProcessor.Application {
                 .AddHttpMessageHandler<BearerTokenHandler>()
                 .AddTransientHttpErrorPolicy();
 
+            // External client for Azure Blob Storage and other external URLs (without authentication)
+            builder.Services.AddHttpClient(HttpClients.ExternalClient)
+                .AddTransientHttpErrorPolicy();
+
             return builder;
         }
 

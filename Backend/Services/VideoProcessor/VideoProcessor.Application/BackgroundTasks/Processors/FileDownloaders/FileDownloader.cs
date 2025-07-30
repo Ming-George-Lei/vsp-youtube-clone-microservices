@@ -15,8 +15,11 @@ namespace VideoProcessor.Application.BackgroundTasks.Processors.FileDownloaders 
         }
 
         public async Task<string> DownloadVideoAsync (IReadOnlyVideo video, string tempDirPath, CancellationToken cancellationToken) {
-            using var httpClient = _httpClientFactory.CreateClient(HttpClients.StorageClient);
-            var downloadStream = await httpClient.GetStreamAsync(GetVideoFileUrl(video), cancellationToken);
+            var videoUrl = GetVideoFileUrl(video);
+            var clientName = IsExternalUrl(videoUrl) ? HttpClients.ExternalClient : HttpClients.StorageClient;
+            
+            using var httpClient = _httpClientFactory.CreateClient(clientName);
+            var downloadStream = await httpClient.GetStreamAsync(videoUrl, cancellationToken);
 
             DirectoryInfo dirInfo = new DirectoryInfo(tempDirPath);
             if (!dirInfo.Exists) {
@@ -41,6 +44,13 @@ namespace VideoProcessor.Application.BackgroundTasks.Processors.FileDownloaders 
                 var baseUri = new Uri(_config.BaseUri);
                 return new Uri(baseUri, video.VideoFileUrl);
             }
+        }
+
+        private bool IsExternalUrl(Uri url) {
+            return url.IsAbsoluteUri &&
+                   (url.Scheme == "http" || url.Scheme == "https") &&
+                   !string.IsNullOrEmpty(_config.BaseUri) &&
+                   !url.ToString().StartsWith(_config.BaseUri);
         }
 
     }
