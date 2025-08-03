@@ -88,6 +88,11 @@ services:
       context: .
       dockerfile: Services/Subscriptions/Subscriptions.API/Dockerfile
 
+  clamav:
+    image: clamav/clamav:stable
+    platform: linux/amd64
+    container_name: ${DOCKER_REGISTRY-}clamav
+
   storage.api:
     image: ${DOCKER_REGISTRY-}storageapi
     build:
@@ -145,4 +150,4 @@ volumes:
   kibana-data:
   redis-data:
   storage-data:
-
+  clamav-data:

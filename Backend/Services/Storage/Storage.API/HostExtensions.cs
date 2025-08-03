@@ -38,6 +38,7 @@ using Storage.Infrastructure;
 using Storage.Infrastructure.AzureStorage;
 using Storage.Infrastructure.LocalStorage;
 using Storage.Infrastructure.Repositories;
+using Storage.Infrastructure.Scanners;
 using Storage.Shared.IntegrationEvents;
 using System.Diagnostics;
 using System.Reflection;
@@ -185,7 +186,8 @@ namespace Storage {
         private static WebApplicationBuilder AddServices (this WebApplicationBuilder builder) {
             builder.Services
                 .AddScoped<IFileStorageHandler, FileStorageHandler>()
-                .AddSingleton<IImageFormatChecker, ImageFormatChecker>();
+                .AddSingleton<IImageFormatChecker, ImageFormatChecker>()
+                .AddScoped<IAntiVirusScanner, ClamAVScanner>();
 
             return builder;
         }
@@ -250,7 +252,8 @@ namespace Storage {
                 .Configure<ImageUploadTokenValidationConfiguration>(configuration.GetSection("ImageUploadTokenValidationConfiguration"))
                 .Configure<ImageStorageConfiguration>(configuration.GetSection("ImageStorageConfiguration"))
                 .Configure<CleanupConfiguration>(configuration.GetSection("CleanupConfiguration"))
-                .Configure<StorageConfiguration>(configuration.GetSection("StorageConfiguration"));
+                .Configure<StorageConfiguration>(configuration.GetSection("StorageConfiguration"))
+                .Configure<ClamAVConfiguration>(configuration.GetSection("ClamAVConfiguration"));
 
             return builder;
         }

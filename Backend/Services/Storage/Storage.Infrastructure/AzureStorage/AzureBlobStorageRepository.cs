@@ -59,9 +59,7 @@ namespace Storage.Infrastructure.AzureStorage {
                 }
 
                 // Anti-virus scan if available
-                if (fileCheck != null) {
-                    await AntiVirusScanAsync(trackingId, stream);
-                }
+                await AntiVirusScanAsync(trackingId, stream);
 
                 // Upload to Azure Blob Storage
                 var uploadOptions = new BlobUploadOptions {
@@ -78,7 +76,6 @@ namespace Storage.Infrastructure.AzureStorage {
                     }
                 };
 
-                stream.Position = 0; // Reset stream position
                 await blobClient.UploadAsync(stream, uploadOptions, cancellationToken);
 
                 var uri = GetPublicUrl(blobName);
@@ -124,10 +121,16 @@ namespace Storage.Infrastructure.AzureStorage {
             if (antiVirusScanner != null) {
                 var tempPath = Path.GetTempFileName();
                 try {
-                    using (var tempFileStream = File.Create(tempPath)) {
-                        stream.Position = 0;
-                        await stream.CopyToAsync(tempFileStream);
-                    }
+                    // Read stream into memory first to avoid affecting original stream
+                    stream.Position = 0;
+                    var streamBytes = new byte[stream.Length];
+                    await stream.ReadExactlyAsync(streamBytes);
+                    
+                    // Reset stream position for subsequent operations
+                    stream.Position = 0;
+                    
+                    // Write bytes to temp file for scanning
+                    await File.WriteAllBytesAsync(tempPath, streamBytes);
 
                     bool result = await antiVirusScanner.ScanAndClean(tempPath);
 

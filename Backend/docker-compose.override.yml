@@ -46,7 +46,7 @@ services:
       - mongo-data:/data/db
     healthcheck:
       test: [ "CMD", "mongosh", "--eval", 'rs.initiate()' ]
-      interval: 10s 
+      interval: 10s
     command: [ "--replSet", "dbrs", "--bind_ip_all" ]
 
   mongo-express:
@@ -262,6 +262,20 @@ services:
       - redis
       - identityprovider
 
+  clamav:
+    restart: always
+    ports:
+      - 3310:3310
+    volumes:
+      - clamav-data:/var/lib/clamav
+    environment:
+      - CLAMAV_NO_FRESHCLAMD=false
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/clamd-healthcheck"]
+      interval: 60s
+      retries: 5
+      start_period: 120s
+
   storage.api:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
@@ -273,6 +287,12 @@ services:
       - Cors__Origins__1=http://host.docker.internal:4200
       - JaegerExporterOptions__AgentHost=jaeger
       - Logstash__Uri=http://logstash:9250
+      # ClamAV Configuration
+      - ClamAVConfiguration__Enabled=false
+      - ClamAVConfiguration__ClamDaemonHost=clamav
+      - ClamAVConfiguration__ClamDaemonPort=3310
+      - ClamAVConfiguration__AllowOnError=true
+      - ClamAVConfiguration__TimeoutSeconds=300
     ports:
       - 14200:80
     volumes:
@@ -284,6 +304,7 @@ services:
       - rabbitmq
       - redis
       - identityprovider
+      - clamav
 
   search.api:
     environment:
