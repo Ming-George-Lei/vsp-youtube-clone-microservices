@@ -108,16 +108,16 @@ export class VideoPlayerComponent implements OnInit, OnChanges, OnDestroy {
       (a, b) => b.height - a.height
     );
 
-    let preferredHeight = 720;
+    // Default to the highest available resolution
+    const highestResolution = sortedVideoResources[0];
+    let preferredHeight = highestResolution?.height ?? 1080;
 
     const preferredHeightString = localStorage.getItem('preferred_height');
     if (preferredHeightString && !Number.isNaN(Number(preferredHeightString))) {
       preferredHeight = Number(preferredHeightString);
     }
 
-    this.selectedHeight =
-      sortedVideoResources.find((x) => x.height <= preferredHeight)?.height ??
-      this.videoResources[0].height;
+    this.selectedHeight = preferredHeight;
   }
 
   onPlayerReady(api: VgApiService) {
