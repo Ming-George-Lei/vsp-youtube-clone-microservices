@@ -7,6 +7,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\..\..\BuildingBlocks\Infrastructure\Infrastructure.csproj" />
 		<ProjectReference Include="..\..\..\BuildingBlocks\Infrastructure.MongoDb\Infrastructure.MongoDb.csproj" />
 		<ProjectReference Include="..\Users.Domain\Users.Domain.csproj" />
 	</ItemGroup>

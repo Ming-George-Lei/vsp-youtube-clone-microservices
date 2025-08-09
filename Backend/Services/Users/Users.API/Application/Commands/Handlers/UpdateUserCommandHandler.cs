@@ -8,12 +8,15 @@ using Users.API.Application.Services;
 using Users.API.Application.Utilities;
 using Users.Domain.Contracts;
 using Users.Domain.Models;
+using Users.Infrastructure.Contracts;
 
 namespace Users.API.Application.Commands.Handlers {
     public class UpdateUserCommandHandler : ICommandHandler<UpdateUserCommand> {
 
         private readonly IUserProfileRepository _userProfileRepository;
         private readonly IUserChannelRepository _userChannelRepository;
+        private readonly ICachedUserProfileRepository _cachedUserProfileRepository;
+        private readonly ICachedUserChannelRepository _cachedUserChannelRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IImageValidator _imageValidator;
         private readonly IMapper _mapper;
@@ -22,12 +25,16 @@ namespace Users.API.Application.Commands.Handlers {
         public UpdateUserCommandHandler (
             IUserProfileRepository userProfileRepository,
             IUserChannelRepository userChannelRepository,
+            ICachedUserProfileRepository cachedUserProfileRepository,
+            ICachedUserChannelRepository cachedUserChannelRepository,
             IUnitOfWork unitOfWork,
             IImageValidator imageValidator,
             IMapper mapper,
             ILogger<UpdateUserCommandHandler> logger) {
             _userProfileRepository = userProfileRepository;
             _userChannelRepository = userChannelRepository;
+            _cachedUserProfileRepository = cachedUserProfileRepository;
+            _cachedUserChannelRepository = cachedUserChannelRepository;
             _unitOfWork = unitOfWork;
             _imageValidator = imageValidator;
             _mapper = mapper;
@@ -37,6 +44,7 @@ namespace Users.API.Application.Commands.Handlers {
         public async Task<Unit> Handle (UpdateUserCommand request, CancellationToken cancellationToken) {
             await _unitOfWork.ExecuteTransactionAsync(async () => {
                 if (RequireUserProfileUpdate(request)) {
+                    // Use direct repository for update operations (needs lock)
                     var userProfile = await _userProfileRepository.GetUserProfileByIdAsync(request.UserId, true, cancellationToken);
 
                     if (userProfile == null) {
@@ -45,8 +53,8 @@ namespace Users.API.Application.Commands.Handlers {
 
                     if (request.UpdateBasicInfo != null) {
                         if (request.UpdateBasicInfo.Handle != null) {
-                            var handleUserProfile = await _userProfileRepository
-                                .GetUserProfileByHandleAsync(request.UpdateBasicInfo.Handle, false, cancellationToken);
+                            var handleUserProfile = await _cachedUserProfileRepository
+                                .GetUserProfileByHandleAsync(request.UpdateBasicInfo.Handle, cancellationToken);
 
                             if (handleUserProfile != null && handleUserProfile.Id != request.UserId) {
                                 throw new AppException("This handle is already in used", null, StatusCodes.Status400BadRequest);
@@ -62,6 +70,7 @@ namespace Users.API.Application.Commands.Handlers {
                 }
 
                 if (RequireUserChannelUpdate(request)) {
+                    // Use direct repository for update operations (needs lock)
                     var userChannel = await _userChannelRepository.GetUserChannelByIdAsync(request.UserId, false, true, cancellationToken);
 
                     if (userChannel == null) {
@@ -79,6 +88,9 @@ namespace Users.API.Application.Commands.Handlers {
 
                 try {
                     await _unitOfWork.CommitAsync(cancellationToken);
+                    // Clear cache after successful update
+                    await _cachedUserProfileRepository.RemoveUserProfileCachesAsync(new[] { request.UserId }, cancellationToken);
+                    await _cachedUserChannelRepository.RemoveUserChannelCachesAsync(new[] { request.UserId }, cancellationToken);
                 } catch (Exception ex) when (ex.Identify(ExceptionCategories.UniqueViolation)) {
                     throw new AppException("Invalid request", null, StatusCodes.Status400BadRequest);
                 }

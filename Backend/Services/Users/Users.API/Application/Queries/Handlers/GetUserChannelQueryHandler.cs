@@ -1,16 +1,16 @@
 ﻿
 using Application.Handlers;
 using SharedKernel.Exceptions;
-using Users.Domain.Contracts;
 using Users.Domain.Models;
+using Users.Infrastructure.Contracts;
 
 namespace Users.API.Application.Queries.Handlers {
     public class GetUserChannelQueryHandler : IQueryHandler<GetUserChannelQuery, UserChannel> {
 
-        private readonly IUserChannelRepository _repository;
+        private readonly ICachedUserChannelRepository _cachedRepository;
 
-        public GetUserChannelQueryHandler (IUserChannelRepository repository) {
-            _repository = repository;
+        public GetUserChannelQueryHandler (ICachedUserChannelRepository cachedRepository) {
+            _cachedRepository = cachedRepository;
         }
 
         public async Task<UserChannel> Handle (GetUserChannelQuery request, CancellationToken cancellationToken) {
@@ -20,11 +20,11 @@ namespace Users.API.Application.Queries.Handlers {
 
             var userChannel = await
                 (!string.IsNullOrEmpty(request.UserId) ?
-                _repository.GetUserChannelByIdAsync(
+                _cachedRepository.GetUserChannelByIdAsync(
                     request.UserId,
                     request.MaxSectionItemsCount,
                     cancellationToken) :
-                _repository.GetUserChannelByHandleAsync(
+                _cachedRepository.GetUserChannelByHandleAsync(
                     request.Handle!,
                     request.MaxSectionItemsCount,
                     cancellationToken));

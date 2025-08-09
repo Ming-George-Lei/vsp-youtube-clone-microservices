@@ -7,9 +7,11 @@ using EventBus.RabbitMQ.Extensions;
 using FluentValidation;
 using HealthChecks.UI.Client;
 using Infrastructure.Extensions;
+using Infrastructure.Caching.Extensions;
 using Infrastructure.MongoDb;
 using Infrastructure.MongoDb.DomainEventsDispatching;
 using Infrastructure.MongoDb.Exceptions;
+using StackExchange.Redis;
 using Infrastructure.MongoDb.Extensions;
 using Infrastructure.MongoDb.Idempotency.Extensions;
 using Infrastructure.MongoDb.TransactionalEvents;
@@ -37,7 +39,10 @@ using Users.Domain.Contracts;
 using Users.Domain.Models;
 using Users.Infrastructure.ClassMaps;
 using Users.Infrastructure.CollectionSeeders;
+using Users.Infrastructure.Configurations;
+using Users.Infrastructure.Contracts;
 using Users.Infrastructure.Repositories;
+using Users.Infrastructure.Services;
 
 namespace Users.API {
     public static class HostExtensions {
@@ -52,6 +57,7 @@ namespace Users.API {
 
             builder.AddConfigurations()
                    .AddDbContext()
+                   .AddCaching()
                    .AddEventBus()
                    .AddTransactionalEvents()
                    .AddIdempotencyContext()
@@ -60,6 +66,7 @@ namespace Users.API {
                    .AddAutoMapper()
                    .AddFluentValidators()
                    .AddServices()
+                   .AddRedis()
                    .AddOpenTelemetry()
                    .AddSerilog()
                    .AddHealthChecks();
@@ -163,7 +170,8 @@ namespace Users.API {
             builder.Services
                 .Configure<StorageConfiguration>(configuration.GetSection("StorageConfiguration"))
                 .Configure<ImageUploadConfiguration>(configuration.GetSection("ImageUploadConfiguration"))
-                .Configure<ImageTokenValidationConfiguration>(configuration.GetSection("ImageTokenValidationConfiguration"));
+                .Configure<ImageTokenValidationConfiguration>(configuration.GetSection("ImageTokenValidationConfiguration"))
+                .Configure<CachingConfigurations>(configuration.GetSection("CachingConfigurations"));
 
             return builder;
         }
@@ -267,6 +275,9 @@ namespace Users.API {
             builder.Services
                 .AddScoped<IUserProfileRepository, UserProfileRepository>()
                 .AddScoped<IUserChannelRepository, UserChannelRepository>()
+                .AddScoped<ICachedUserProfileRepository, CachedUserProfileRepository>()
+                .AddScoped<ICachedUserChannelRepository, CachedUserChannelRepository>()
+                .AddSingleton<ICacheKeyProvider, CacheKeyProvider>()
                 .AddDomainEventEmittersTracker()
                 .AddDomainEventsAccessor<DomainEventsAccessor>()
                 .AddUnitOfWork<UnitOfWork>();
@@ -309,6 +320,31 @@ namespace Users.API {
 
         private static WebApplicationBuilder AddHealthChecks (this WebApplicationBuilder builder) {
             builder.Services.AddHealthChecks();
+            return builder;
+        }
+
+        private static WebApplicationBuilder AddRedis (this WebApplicationBuilder builder) {
+            var configuration = builder.Configuration;
+
+            var connectionString = configuration.GetConnectionString("Redis")!;
+
+            builder.Services.AddSingleton<IConnectionMultiplexer>((_) => {
+                return ConnectionMultiplexer.Connect(connectionString);
+            });
+
+            builder.Services.AddHealthChecks().AddRedis(connectionString);
+
+            return builder;
+        }
+
+        private static WebApplicationBuilder AddCaching (this WebApplicationBuilder builder) {
+            var configuration = builder.Configuration;
+
+            builder.Services.AddSingleton<ICacheKeyProvider, CacheKeyProvider>()
+                            .AddCacheContext();
+
+            builder.Services.AddRedisCachingLayer();
+
             return builder;
         }
 
