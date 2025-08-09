@@ -6,19 +6,23 @@ using Users.API.Application.DtoModels;
 using Users.Domain.Contracts;
 using Users.Domain.DomainEvents;
 using Users.Domain.Models;
+using Users.Infrastructure.Contracts;
 
 namespace Users.API.Application.DomainEventHandlers {
     public class UserProfileCreatedDomainEventHandler : IDomainEventHandler<UserProfileCreatedDomainEvent> {
 
         private readonly IUserChannelRepository _channelRepository;
+        private readonly ICachedUserChannelRepository _cachedChannelRepository;
         private readonly ITransactionalEventsContext _transactionalEventsContext;
         private readonly IMapper _mapper;
 
         public UserProfileCreatedDomainEventHandler (
             IUserChannelRepository channelRepository,
+            ICachedUserChannelRepository cachedChannelRepository,
             ITransactionalEventsContext transactionalEventsContext,
             IMapper mapper) {
             _channelRepository = channelRepository;
+            _cachedChannelRepository = cachedChannelRepository;
             _transactionalEventsContext = transactionalEventsContext;
             _mapper = mapper;
         }
@@ -26,6 +30,7 @@ namespace Users.API.Application.DomainEventHandlers {
         public async Task Handle (UserProfileCreatedDomainEvent @event, CancellationToken cancellationToken) {
             var userChannel = UserChannel.Create(@event.UserProfile.Id, @event.UserProfile.Handle);
             await _channelRepository.AddUserChannelAsync(userChannel);
+            await _cachedChannelRepository.CacheUserChannelsAsync(new[] { userChannel }, cancellationToken);
 
             var userProfile = _mapper.Map<InternalUserProfileDto>(@event.UserProfile);
             _transactionalEventsContext.AddRoutingSlip(builder => {

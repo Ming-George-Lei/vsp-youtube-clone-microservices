@@ -10,7 +10,7 @@ namespace Users.Infrastructure.Services {
 
         public string GetUserProfileByHandleCacheKey(string handle)
         {
-            return $"user-profileHandle-{handle}";
+            return $"user-profile-handle-{handle}";
         }
 
         public string GetUserChannelCacheKey(string userId)
@@ -20,7 +20,7 @@ namespace Users.Infrastructure.Services {
 
         public string GetUserChannelByHandleCacheKey(string handle)
         {
-            return $"user-channelHandle-{handle}";
+            return $"user-channel-handle-{handle}";
         }
     }
 }

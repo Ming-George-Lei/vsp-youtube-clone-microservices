@@ -99,21 +99,28 @@ namespace Users.Infrastructure.Repositories {
         public async Task RemoveUserProfileCachesAsync(IEnumerable<string> userIds, CancellationToken cancellationToken = default) {
             try {
                 foreach (var userId in userIds) {
-                    _cacheContext.RemoveCache(_cacheKeyProvider.GetUserProfileCacheKey(userId));
+                    try {
+                        var cachedById = await _cacheContext.GetCacheAsync<UserProfile>(
+                            _cacheKeyProvider.GetUserProfileCacheKey(userId),
+                            cancellationToken);
+                        if (!string.IsNullOrEmpty(cachedById?.Handle)) {
+                            _cacheContext.RemoveCache(
+                                _cacheKeyProvider.GetUserProfileByHandleCacheKey(cachedById.Handle));
+                        }
+                    } catch (Exception ex) {
+                        _logger.LogError(
+                            ex,
+                            "Failed to read cached profile by id during removal ({UserId})",
+                            userId);
+                    }
+
+                    _cacheContext.RemoveCache(
+                        _cacheKeyProvider.GetUserProfileCacheKey(userId));
                 }
 
                 await _cacheContext.CommitAsync(cancellationToken);
             } catch (Exception ex) {
                 _logger.LogError(ex, "Failed to remove user profile caches");
-            }
-        }
-
-        public async Task RemoveUserProfileCacheByHandleAsync(string handle, CancellationToken cancellationToken = default) {
-            try {
-                _cacheContext.RemoveCache(_cacheKeyProvider.GetUserProfileByHandleCacheKey(handle));
-                await _cacheContext.CommitAsync(cancellationToken);
-            } catch (Exception ex) {
-                _logger.LogError(ex, "Failed to remove user profile cache by handle ({Handle})", handle);
             }
         }
     }

@@ -6,21 +6,25 @@ using Users.API.Application.Services;
 using Users.API.Application.Utilities;
 using Users.Domain.Contracts;
 using Users.Domain.Models;
+using Users.Infrastructure.Contracts;
 
 namespace Users.API.Application.Commands.Handlers {
     public class CreateUserProfileCommandHandler : ICommandHandler<CreateUserProfileCommand> {
 
         private readonly IUserProfileRepository _repository;
+        private readonly ICachedUserProfileRepository _cachedRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IImageValidator _imageValidator;
         private readonly ILogger<CreateUserProfileCommandHandler> _logger;
 
         public CreateUserProfileCommandHandler (
             IUserProfileRepository repository,
+            ICachedUserProfileRepository cachedRepository,
             IUnitOfWork unitOfWork,
             IImageValidator imageValidator,
             ILogger<CreateUserProfileCommandHandler> logger) {
             _repository = repository;
+            _cachedRepository = cachedRepository;
             _unitOfWork = unitOfWork;
             _imageValidator = imageValidator;
             _logger = logger;
@@ -37,6 +41,8 @@ namespace Users.API.Application.Commands.Handlers {
 
                 await _repository.AddUserProfileAsync(userProfile);
                 await _unitOfWork.CommitAsync(cancellationToken);
+
+                await _cachedRepository.CacheUserProfilesAsync(new[] { userProfile }, cancellationToken);
 
                 _logger.LogInformation("User profile ({UserId}) is created", request.UserId);
             } catch (Exception ex) {

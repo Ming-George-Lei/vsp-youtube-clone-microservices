@@ -6,6 +6,5 @@ namespace Users.Infrastructure.Contracts {
         Task<UserProfile?> GetUserProfileByHandleAsync(string handle, CancellationToken cancellationToken = default);
         Task CacheUserProfilesAsync(IEnumerable<UserProfile> userProfiles, CancellationToken cancellationToken = default);
         Task RemoveUserProfileCachesAsync(IEnumerable<string> userIds, CancellationToken cancellationToken = default);
-        Task RemoveUserProfileCacheByHandleAsync(string handle, CancellationToken cancellationToken = default);
     }
 }
